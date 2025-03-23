@@ -19,6 +19,10 @@ const uint I2C_SLC = 15;
 // Variável de controle de pausa
 volatile bool paused = false; 
 
+void toggle_pause(uint gpio, uint32_t events){
+    paused = !paused;
+}
+
 // Configuração da frequência do buzzer (em Hz)
 #define BUZZER_FREQUENCY 100
 
@@ -65,6 +69,10 @@ int main() {
     pwm_init_buzzer(BUZZER_PIN);
 
     // Inicializar o botão 
+    gpio_init(BUTTON_PIN);
+    gpio_set_dir(BUTTON_PIN, GPIO_IN);
+    gpio_pull_up(BUTTON_PIN);
+    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &toggle_pause);
 
     // Inicialização do I2C 
     i2c_init(i2c1, ssd1306_i2c_clock * 1000);
@@ -89,24 +97,39 @@ int main() {
     memset(ssd, 0, ssd1306_buffer_length);
     render_on_display(ssd, &frame_area);
 
-    char *text[] = {
-        "  Atencao!   ",
-        "  Maquinas ",
-        "Trabalhando"
+    char *estadoespera[] = {
+        "   Sistema  ",
+        "  Em Espera "
     };
 
-    int y = 0;
-    for (uint i = 0; i < count_of(text); i++)
-    {
-        ssd1306_draw_string(ssd, 5, y, text[i]);
-        y += 8;
-    }
-    render_on_display(ssd, &frame_area);
+    char *atividade[] = {
+        "  Atividade",
+        "Em execucao!"
+    };
 
+    
     // Loop infinito
     while (true) {
-        beep(BUZZER_PIN, 500); // Bipe de 500ms
-        sleep_ms(1000);
+        if (!paused){
+            int y = 0;
+            for (uint i = 0; i < count_of(estadoespera); i++)
+            {
+                ssd1306_draw_string(ssd, 5, y, estadoespera[i]);
+                y += 8;
+            }
+            render_on_display(ssd, &frame_area);
+            sleep_ms(1000);
+        } else {
+            beep(BUZZER_PIN, 500); // Bipe de 500ms
+            int y = 0;
+            for (uint i = 0; i < count_of(atividade); i++)
+            {
+                ssd1306_draw_string(ssd, 5, y, atividade[i]);
+                y += 8;
+            }
+            render_on_display(ssd, &frame_area);
+            sleep_ms(1000);
+        }
     }
     return 0;
 }
